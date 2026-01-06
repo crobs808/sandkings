@@ -14,6 +14,7 @@ A web-based survival game inspired by George R.R. Martin's "Sandkings" short sto
 - **🕷️ Spider** - Drag to place a deadly spider enemy - all colonies will unite to fight it!
 - **💦 Spray** - Spray water to annoy colonies
 - **👁️ Observe** - Get detailed information about a colony
+- **👆 Tap** - Tap on the glass to startle all sandkings (disperses them, increases agitation and hostility, they must regroup over 4-5 seconds)
 
 ### Environmental Controls
 - **Heat Slider** (0-100°) - Control temperature (higher heat = faster growth & hunger, extreme heat = increased aggression)

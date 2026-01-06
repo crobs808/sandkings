@@ -9,6 +9,12 @@
 <body>
     <div class="game-container">
         <header>
+            <div class="github-link">
+                <a href="https://github.com/crobs808/sandkings" target="_blank" rel="noopener noreferrer">
+                    <span class="github-icon">⭐</span> GitHub
+                </a>
+                <span class="author-credit">by Con Rob</span>
+            </div>
             <h1>SANDKINGS</h1>
             <p class="subtitle">Keep them fed. Keep them contained. Survive.</p>
             <p class="credit">Inspired by <a href="https://en.wikipedia.org/wiki/Sandkings_(novelette)" target="_blank" rel="noopener noreferrer">Sandkings</a> by George R.R. Martin</p>
@@ -142,16 +148,36 @@
                             <span class="tool-icon">👁️</span>
                             <span class="tool-label">Observe</span>
                         </button>
+                        <button class="tool-btn" data-tool="tap" title="Tap - Tap on the glass to startle all sandkings">
+                            <span class="tool-icon">👆</span>
+                            <span class="tool-label">Tap</span>
+                        </button>
                     </div>
                     <div class="tool-group tool-divider">
                         <label class="env-control">
                             <span class="env-label">Heat</span>
                             <input type="range" id="heat-slider" min="0" max="100" value="50" class="env-slider">
+                            <span class="env-value" id="heat-value">50°</span>
                         </label>
                         <label class="env-control">
                             <span class="env-label">Humid</span>
                             <input type="range" id="humidity-slider" min="0" max="100" value="30" class="env-slider">
+                            <span class="env-value" id="humidity-value">30%</span>
                         </label>
+                    </div>
+                    <div class="tool-group">
+                        <button class="weather-preset-btn" data-preset="cloudy" title="Cloudy - Cool & Moderate (30° / 50%)">
+                            <span class="tool-icon">☁️</span>
+                            <span class="tool-label">Cloudy</span>
+                        </button>
+                        <button class="weather-preset-btn" data-preset="sunny" title="Sunny - Hot & Dry (85° / 20%)">
+                            <span class="tool-icon">☀️</span>
+                            <span class="tool-label">Sunny</span>
+                        </button>
+                        <button class="weather-preset-btn" data-preset="rainy" title="Rainy - Warm & Humid (55° / 80%)">
+                            <span class="tool-icon">🌧️</span>
+                            <span class="tool-label">Rainy</span>
+                        </button>
                     </div>
                     <div class="tool-group">
                         <button id="auto-feed-btn" class="tool-btn" title="Toggle auto-feeding">
@@ -162,6 +188,11 @@
                             <span class="tool-icon" id="mute-icon">🔊</span>
                             <span class="tool-label">Sound</span>
                         </button>
+                        <label class="tool-btn checkbox-label" title="Magnify fights when they occur">
+                            <input type="checkbox" id="highlight-fights-checkbox">
+                            <span class="checkbox-icon">🔍</span>
+                            <span class="tool-label">Highlight Fights</span>
+                        </label>
                     </div>
                     <div class="toolbar-info">
                         <span id="tool-description">Click and drag to poke sandkings</span>
@@ -169,6 +200,21 @@
                 </div>
                 <div class="tank-frame">
                     <canvas id="tank-canvas" width="800" height="600"></canvas>
+                    <div id="magnifier-overlay" class="magnifier-overlay hidden">
+                        <div class="magnifier-frame">
+                            <div class="magnifier-label">🔍 OBSERVING COMBAT</div>
+                            <canvas id="magnifier-canvas" width="300" height="300"></canvas>
+                        </div>
+                    </div>
+                    <div id="observe-overlay" class="observe-overlay hidden">
+                        <div class="observe-panel">
+                            <div class="observe-header">
+                                <span id="observe-colony-name">COLONY</span>
+                                <button id="observe-close-btn" class="observe-close">✕</button>
+                            </div>
+                            <div id="observe-content" class="observe-content"></div>
+                        </div>
+                    </div>
                     <div id="game-over-overlay" class="game-over-overlay hidden">
                         <div class="game-over-content">
                             <h2 id="game-over-title">GAME OVER</h2>
