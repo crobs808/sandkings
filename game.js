@@ -47,6 +47,9 @@ class SandkingGame {
         this.lastCommentTime = 0;
         this.commentCooldown = 15; // seconds between comments
         
+        // Wet spots from spray tool
+        this.wetSpots = [];
+        
         // Generate static sand texture once
         this.generateSandTexture();
         
@@ -60,12 +63,12 @@ class SandkingGame {
         this.ambientSoundInterval = null;
         this.initAudio();
         
-        // Sandking colonies - spread further apart
+        // Sandking colonies - positioned in each corner
         this.colonies = {
-            red: this.createColony('red', 150, 120),
-            white: this.createColony('white', 650, 120),
-            black: this.createColony('black', 150, 480),
-            orange: this.createColony('orange', 650, 480)
+            red: this.createColony('red', 60, 60),
+            white: this.createColony('white', 740, 60),
+            black: this.createColony('black', 60, 540),
+            orange: this.createColony('orange', 740, 540)
         };
         
         // Event log
@@ -649,6 +652,14 @@ class SandkingGame {
     }
     
     handleSprayTool(x, y) {
+        // Create wet spot on sand
+        this.wetSpots.push({
+            x: x,
+            y: y,
+            radius: 35,
+            wetness: 1.0 // 1.0 = fully wet, 0.0 = dry
+        });
+        
         // Spray annoys sandkings in area
         Object.values(this.colonies).forEach(colony => {
             colony.mobiles.forEach(mobile => {
@@ -673,6 +684,23 @@ class SandkingGame {
                 this.addEvent(`Sprayed the ${colony.color} colony. They are NOT happy!`, 'danger');
             }
         });
+    }
+    
+    updateWetSpots(deltaTime) {
+        // Dry out wet spots over time - faster when hotter
+        const baseDryRate = 0.08; // Base drying per second
+        const tempDryFactor = 0.5 + (this.temperature / 100) * 1.5; // 0.5x to 2x based on temp
+        const dryRate = baseDryRate * tempDryFactor;
+        
+        for (let i = this.wetSpots.length - 1; i >= 0; i--) {
+            const spot = this.wetSpots[i];
+            spot.wetness -= dryRate * deltaTime;
+            
+            // Remove fully dried spots
+            if (spot.wetness <= 0) {
+                this.wetSpots.splice(i, 1);
+            }
+        }
     }
     
     handleObserveTool(x, y) {
@@ -729,6 +757,7 @@ class SandkingGame {
         this.gameDay += deltaTime;
         
         // Update game state
+        this.updateWetSpots(deltaTime);
         this.updateColonies(deltaTime);
         this.updateSafety();
         this.checkGameOver();
@@ -1974,7 +2003,11 @@ class SandkingGame {
             ctx.fillStyle = 'rgba(70, 60, 50, 0.15)';
             this.sandPatches.forEach(patch => {
                 ctx.beginPath();
-                ctx.arc(patch.x, patch.y, patch.radius, 0, Math.PI * 2);
+                ctx.moveTo(patch.points[0].x, patch.points[0].y);
+                for (let i = 1; i < patch.points.length; i++) {
+                    ctx.lineTo(patch.points[i].x, patch.points[i].y);
+                }
+                ctx.closePath();
                 ctx.fill();
             });
         }
@@ -1997,7 +2030,11 @@ class SandkingGame {
             this.darkSpots.forEach(spot => {
                 ctx.fillStyle = `rgba(50, 40, 30, ${spot.opacity})`;
                 ctx.beginPath();
-                ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
+                ctx.moveTo(spot.points[0].x, spot.points[0].y);
+                for (let i = 1; i < spot.points.length; i++) {
+                    ctx.lineTo(spot.points[i].x, spot.points[i].y);
+                }
+                ctx.closePath();
                 ctx.fill();
             });
         }
@@ -2015,6 +2052,17 @@ class SandkingGame {
                     return true;
                 }
                 return false; // Remove faded disturbances
+            });
+        }
+        
+        // Draw wet spots from spray tool
+        if (this.wetSpots) {
+            this.wetSpots.forEach(spot => {
+                const darkenAmount = spot.wetness * 0.6; // Max 60% darker when fully wet
+                ctx.fillStyle = `rgba(30, 25, 20, ${darkenAmount})`;
+                ctx.beginPath();
+                ctx.arc(spot.x, spot.y, spot.radius, 0, Math.PI * 2);
+                ctx.fill();
             });
         }
         
@@ -2258,11 +2306,23 @@ class SandkingGame {
         
         this.sandPatches = [];
         for (let i = 0; i < 30; i++) {
-            this.sandPatches.push({
-                x: Math.random() * 800,
-                y: Math.random() * 600,
-                radius: 10 + Math.random() * 30
-            });
+            // Create irregular polygon patches
+            const centerX = Math.random() * 800;
+            const centerY = Math.random() * 600;
+            const size = 10 + Math.random() * 30;
+            const points = [];
+            const numPoints = 5 + Math.floor(Math.random() * 4); // 5-8 points
+            
+            for (let p = 0; p < numPoints; p++) {
+                const angle = (Math.PI * 2 * p / numPoints) + (Math.random() - 0.5) * 0.8;
+                const distance = size * (0.6 + Math.random() * 0.4); // Vary distance
+                points.push({
+                    x: centerX + Math.cos(angle) * distance,
+                    y: centerY + Math.sin(angle) * distance
+                });
+            }
+            
+            this.sandPatches.push({ points });
         }
         
         // Add rock veins (random lines across the sand)
@@ -2285,14 +2345,27 @@ class SandkingGame {
             });
         }
         
-        // Add dark imperfections/spots
+        // Add dark imperfections/spots (irregular shapes)
         this.darkSpots = [];
         const spotCount = 10 + Math.floor(Math.random() * 15); // 10-24 spots
         for (let i = 0; i < spotCount; i++) {
+            const centerX = Math.random() * 800;
+            const centerY = Math.random() * 600;
+            const size = 5 + Math.random() * 15;
+            const points = [];
+            const numPoints = 4 + Math.floor(Math.random() * 4); // 4-7 points
+            
+            for (let p = 0; p < numPoints; p++) {
+                const angle = (Math.PI * 2 * p / numPoints) + (Math.random() - 0.5) * 1.0;
+                const distance = size * (0.5 + Math.random() * 0.5);
+                points.push({
+                    x: centerX + Math.cos(angle) * distance,
+                    y: centerY + Math.sin(angle) * distance
+                });
+            }
+            
             this.darkSpots.push({
-                x: Math.random() * 800,
-                y: Math.random() * 600,
-                radius: 5 + Math.random() * 15,
+                points,
                 opacity: 0.2 + Math.random() * 0.3
             });
         }
@@ -2507,11 +2580,15 @@ class SandkingGame {
             // Check if mobile is over dark area and create disturbance
             if (this.darkSpots && Math.random() < 0.1) {
                 this.darkSpots.forEach(spot => {
-                    const dx = mobile.x - spot.x;
-                    const dy = mobile.y - spot.y;
+                    // Simple point-in-polygon test using bounding box approximation
+                    const centerX = spot.points.reduce((sum, p) => sum + p.x, 0) / spot.points.length;
+                    const centerY = spot.points.reduce((sum, p) => sum + p.y, 0) / spot.points.length;
+                    const dx = mobile.x - centerX;
+                    const dy = mobile.y - centerY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (dist < spot.radius) {
+                    // Use rough distance check (fast approximation)
+                    if (dist < 15) {
                         // Create sand disturbance
                         this.sandDisturbances.push({
                             x: mobile.x + (Math.random() - 0.5) * 3,
