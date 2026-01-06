@@ -85,6 +85,7 @@ class SandkingGame {
             hunger: 50, // 0-100, higher means hungrier
             hostility: 0, // 0-100, higher means more hostile
             favoritism: 0, // -50 to +50, tracks targeted treatment
+            confidence: 50, // 0-100, increases with favoritism/food, affects aggression
             mood: 'neutral', // neutral, content, angry, hostile, adored, abused
             // Mobiles (individual creatures)
             mobiles: [],
@@ -102,7 +103,7 @@ class SandkingGame {
             timesPokedRecently: 0,
             // War tracking
             lastAttackDay: -100, // Last day this colony attacked
-            attackCooldown: 20, // Days between attacks
+            attackCooldown: 15, // Days between attacks (reduced for more action)
             preparingWar: false // Visual indicator
         };
     }
@@ -403,9 +404,21 @@ class SandkingGame {
     }
     
     handleMouseUp(e) {
-        if (!this.gameRunning || !this.isDragging) return;
+        if (!this.gameRunning) return;
         
         const coords = this.getCanvasCoordinates(e);
+        
+        // If we were grabbing a sandking, drop it
+        if (this.grabbedMobile && this.currentTool === 'grab') {
+            this.handleGrabDrop(coords.x, coords.y);
+            this.canvas.style.cursor = 'grab';
+            this.isDragging = false;
+            return;
+        }
+        
+        // For other tools, only proceed if we had a valid interaction
+        if (!this.isDragging) return;
+        
         this.isDragging = false;
         
         // Handle tool action
@@ -557,15 +570,6 @@ class SandkingGame {
     }
     
     handleLiveFoodTool(x, y) {
-        // Check if this was a drag (like other food types)
-        const dragDist = this.dragStartX && this.dragStartY ? 
-            Math.sqrt(Math.pow(x - this.dragStartX, 2) + Math.pow(y - this.dragStartY, 2)) : 0;
-        
-        // Only drop if dragged at least 20 pixels
-        if (dragDist < 20) {
-            return;
-        }
-        
         if (this.foodSupply < 10) {
             this.addEvent('Not enough food supply!', 'warning');
             return;
@@ -769,6 +773,17 @@ class SandkingGame {
             // Update favoritism decay (gradually returns to neutral)
             colony.favoritism *= 0.995;
             
+            // Update confidence based on favoritism and hunger
+            // Well-fed and favored colonies gain confidence
+            if (colony.favoritism > 10 && colony.hunger < 40) {
+                colony.confidence = Math.min(100, colony.confidence + deltaTime * 0.2);
+            } else if (colony.favoritism < -10 || colony.hunger > 70) {
+                colony.confidence = Math.max(0, colony.confidence - deltaTime * 0.3);
+            } else {
+                // Slowly drift toward neutral confidence
+                colony.confidence += (50 - colony.confidence) * 0.001;
+            }
+            
             // Update hostility based on treatment and environment
             const envStress = Math.max(0, (this.temperature - 70) / 30) + Math.abs(this.humidity - 40) / 40; // Environmental stress
             
@@ -901,18 +916,53 @@ class SandkingGame {
                 });
             });
             
-            // Check if colony should attack (when very hungry and hostile)
-            if (colony.hunger > 80 && 
-                colony.hostility > 50 && 
-                colony.population > 20 &&
-                this.gameDay - colony.lastAttackDay > colony.attackCooldown) {
+            // Check if colony should attack (multiple conditions)
+            const hasEnoughForces = colony.population > 20;
+            const canAttack = this.gameDay - colony.lastAttackDay > colony.attackCooldown;
+            
+            if (hasEnoughForces && canAttack) {
+                let shouldAttack = false;
+                let attackReason = '';
                 
-                // Mark colony as preparing for war
-                colony.preparingWar = true;
+                // 1. Desperate hunger attack (original condition)
+                if (colony.hunger > 80 && colony.hostility > 50) {
+                    colony.preparingWar = true;
+                    shouldAttack = Math.random() < 0.05;
+                    attackReason = 'desperation';
+                }
+                // 2. High hostility attack (anger-driven)
+                else if (colony.hostility > 70 && colony.hunger > 50) {
+                    colony.preparingWar = true;
+                    shouldAttack = Math.random() < 0.03;
+                    attackReason = 'anger';
+                }
+                // 3. Confidence-based opportunistic attack
+                else if (colony.confidence > 70 && colony.population > 30) {
+                    // Find weakest colony
+                    const otherColonies = Object.values(this.colonies).filter(c => c !== colony);
+                    const weakest = otherColonies.reduce((min, c) => 
+                        c.confidence < min.confidence ? c : min, otherColonies[0]);
+                    
+                    // Attack if confidence gap is large enough
+                    if (weakest && colony.confidence - weakest.confidence > 30) {
+                        colony.preparingWar = true;
+                        shouldAttack = Math.random() < 0.02;
+                        attackReason = 'dominance';
+                    }
+                }
+                // 4. Territorial aggression (combination)
+                else if (colony.hostility > 60 && colony.confidence > 60) {
+                    colony.preparingWar = true;
+                    shouldAttack = Math.random() < 0.015;
+                    attackReason = 'territorial';
+                }
                 
-                // Random chance to attack
-                if (Math.random() < 0.05) {
-                    this.initiateAttack(colony);
+                if (shouldAttack) {
+                    this.initiateAttack(colony, attackReason);
+                }
+                
+                if (!shouldAttack && colony.preparingWar) {
+                    colony.preparingWar = false;
                 }
             } else {
                 colony.preparingWar = false;
@@ -935,7 +985,16 @@ class SandkingGame {
         
         // Auto-feed if enabled
         if (this.autoFeed && this.foodSupply >= 10 && this.gameDay % 5 < deltaTime) {
-            this.dropFood(400, 300, 'normal');
+            // Random position in central area (within 150 pixels of center)
+            const centerX = 400;
+            const centerY = 300;
+            const radius = 150;
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * radius;
+            const x = centerX + Math.cos(angle) * distance;
+            const y = centerY + Math.sin(angle) * distance;
+            
+            this.dropFood(x, y, 'normal');
             this.foodSupply -= 10;
         }
         
@@ -950,13 +1009,19 @@ class SandkingGame {
         }
     }
     
-    initiateAttack(attackerColony) {
+    initiateAttack(attackerColony, reason = 'unknown') {
         // Find potential target colonies (not self)
         const targets = Object.values(this.colonies).filter(c => c !== attackerColony && c.population > 5);
         if (targets.length === 0) return;
         
-        // Pick random target
-        const targetColony = targets[Math.floor(Math.random() * targets.length)];
+        // For confidence/dominance attacks, target the weakest
+        let targetColony;
+        if (reason === 'dominance') {
+            targetColony = targets.reduce((min, c) => c.confidence < min.confidence ? c : min, targets[0]);
+        } else {
+            // Random target for other attack types
+            targetColony = targets[Math.floor(Math.random() * targets.length)];
+        }
         
         // Send 20-40% of population to attack
         const attackForce = Math.floor(attackerColony.population * (0.2 + Math.random() * 0.2));
@@ -989,7 +1054,13 @@ class SandkingGame {
         });
         
         this.playAttackSound();
-        this.addEvent(`${attackerColony.color.toUpperCase()} colony launches attack on ${targetColony.color.toUpperCase()}!`, 'danger');
+        const reasonText = {
+            desperation: 'out of desperation',
+            anger: 'in a rage',
+            dominance: 'to assert dominance',
+            territorial: 'defending territory'
+        }[reason] || '';
+        this.addEvent(`${attackerColony.color.toUpperCase()} colony launches attack on ${targetColony.color.toUpperCase()} ${reasonText}!`, 'danger');
     }
     
     updateNarrative(deltaTime) {
@@ -1005,10 +1076,28 @@ class SandkingGame {
         const colonies = Object.values(this.colonies);
         const avgHostility = colonies.reduce((sum, c) => sum + c.hostility, 0) / 4;
         const avgHunger = colonies.reduce((sum, c) => sum + c.hunger, 0) / 4;
+        const avgConfidence = colonies.reduce((sum, c) => sum + c.confidence, 0) / 4;
         const totalPop = colonies.reduce((sum, c) => sum + c.population, 0);
         const activeBattles = this.battles.length;
         
         let comments = [];
+        
+        // Confidence-based observations
+        const mostConfident = colonies.reduce((max, c) => c.confidence > max.confidence ? c : max, colonies[0]);
+        const leastConfident = colonies.reduce((min, c) => c.confidence < min.confidence ? c : min, colonies[0]);
+        
+        if (mostConfident.confidence > 80 && leastConfident.confidence < 30) {
+            comments.push(
+                `The ${mostConfident.color} colony has grown bold. Dominant.`,
+                `${mostConfident.color.toUpperCase()} swaggers while ${leastConfident.color} cowers.`,
+                `One colony thrives, another fears. Natural selection at work.`
+            );
+        } else if (avgConfidence > 70) {
+            comments.push(
+                "They're all feeling confident now. This could get interesting.",
+                "Bold colonies make for aggressive wars."
+            );
+        }
         
         // Spider-related observations
         if (this.spider) {
@@ -1136,6 +1225,24 @@ class SandkingGame {
         spider.y += spider.vy * deltaTime * 60;
         spider.vx *= 0.95;
         spider.vy *= 0.95;
+        
+        // Spider damages nearby castle walls
+        Object.values(this.colonies).forEach(colony => {
+            const dx = colony.castleX - spider.x;
+            const dy = colony.castleY - spider.y;
+            const distToCastle = Math.sqrt(dx * dx + dy * dy);
+            
+            // If spider is close to castle, damage it
+            if (distToCastle < 40) {
+                // Slowly reduce building progress (0.5% per second when close)
+                colony.buildingProgress = Math.max(0, colony.buildingProgress - deltaTime * 0.5);
+                
+                // Visual feedback occasionally
+                if (Math.random() < 0.01) {
+                    this.addEvent(`${spider.name} is destroying ${colony.color} colony walls!`, 'danger');
+                }
+            }
+        });
         
         // All colonies send forces to fight spider (COOPERATIVE BEHAVIOR)
         Object.values(this.colonies).forEach(colony => {
@@ -1541,7 +1648,19 @@ class SandkingGame {
             });
             
             // Remove food if depleted
-            return food.amount > 0;
+            if (food.amount <= 0) {
+                // Clear any mobiles still targeting this food
+                Object.values(this.colonies).forEach(colony => {
+                    colony.mobiles.forEach(mobile => {
+                        if (mobile.target === food) {
+                            mobile.target = null;
+                            mobile.activity = 'wandering';
+                        }
+                    });
+                });
+                return false; // Remove the food
+            }
+            return true; // Keep the food
         });
     }
     
@@ -1838,8 +1957,8 @@ class SandkingGame {
         const ctx = this.ctx;
         const canvas = this.canvas;
         
-        // Clear canvas with sandy brown base
-        ctx.fillStyle = '#8B7355';
+        // Clear canvas with sandy brown base (darker for contrast)
+        ctx.fillStyle = '#5A4A38';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Draw static sand texture (only if initialized)
@@ -1914,9 +2033,43 @@ class SandkingGame {
                 if (food.x < 10 || food.x > 790) food.vx *= -1;
                 if (food.y < 10 || food.y > 590) food.vy *= -1;
                 
-                // Add wiggle animation
-                const wiggle = Math.sin(Date.now() / 100) * 2;
-                ctx.fillRect(food.x - food.size / 2 + wiggle, food.y - food.size / 2, food.size, food.size);
+                // Draw as wiggling worm/lizard
+                const time = Date.now() / 100;
+                const wiggleSpeed = time + (food.x + food.y) * 0.1; // Unique per food
+                const length = 12; // Length of the worm/lizard
+                const segments = 6; // Number of segments to draw
+                
+                ctx.strokeStyle = food.color;
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // Calculate movement direction
+                const direction = Math.atan2(food.vy, food.vx);
+                
+                ctx.beginPath();
+                for (let i = 0; i < segments; i++) {
+                    const segmentOffset = (i / segments) * length;
+                    const wiggle = Math.sin(wiggleSpeed + i * 0.5) * 2;
+                    
+                    // Calculate position along the body
+                    const perpAngle = direction + Math.PI / 2;
+                    const x = food.x - Math.cos(direction) * segmentOffset + Math.cos(perpAngle) * wiggle;
+                    const y = food.y - Math.sin(direction) * segmentOffset + Math.sin(perpAngle) * wiggle;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                
+                // Draw head (slightly larger)
+                ctx.fillStyle = food.color;
+                ctx.beginPath();
+                ctx.arc(food.x, food.y, 2, 0, Math.PI * 2);
+                ctx.fill();
             } else {
                 ctx.fillRect(food.x - food.size / 2, food.y - food.size / 2, food.size, food.size);
             }
@@ -2091,7 +2244,7 @@ class SandkingGame {
     
     generateSandTexture() {
         // Generate static sand texture once per game (unique each time)
-        const sandColors = ['#9D8469', '#A0856B', '#8A7256', '#7A6550', '#9A8060'];
+        const sandColors = ['#6B5449', '#705A4B', '#5A4236', '#5A4540', '#6A5040'];
         
         this.sandParticles = [];
         for (let i = 0; i < 400; i++) {
@@ -2228,7 +2381,7 @@ class SandkingGame {
         const colorMap = {
             red: '#ff4444',
             white: '#eeeeee',
-            black: '#444444',
+            black: '#000000',
             orange: '#ff9944'
         };
         const baseColor = colorMap[colony.color];
@@ -2552,7 +2705,28 @@ class SandkingGame {
         
         // Update colony stats
         Object.entries(this.colonies).forEach(([color, colony]) => {
+            const colonyStatEl = document.querySelector(`.colony-stat[data-color="${color}"]`);
+            const isDead = colony.population === 0;
+            
+            // Update population
             document.getElementById(`${color}-population`).textContent = colony.population;
+            
+            // Add/remove death state
+            if (isDead) {
+                colonyStatEl.classList.add('dead');
+                // Add skull if not already present
+                if (!colonyStatEl.querySelector('.death-icon')) {
+                    const skull = document.createElement('div');
+                    skull.className = 'death-icon';
+                    skull.textContent = '☠';
+                    colonyStatEl.appendChild(skull);
+                }
+            } else {
+                colonyStatEl.classList.remove('dead');
+                // Remove skull if present
+                const skull = colonyStatEl.querySelector('.death-icon');
+                if (skull) skull.remove();
+            }
             
             // Size description based on actual mobile size
             const avgSize = colony.mobiles.reduce((sum, m) => sum + m.size, 0) / colony.mobiles.length || 1;
@@ -2561,11 +2735,12 @@ class SandkingGame {
             else if (avgSize > 7) sizeDesc = 'Medium';
             else if (avgSize > 4) sizeDesc = 'Small';
             else if (avgSize > 2) sizeDesc = 'Tiny';
-            document.getElementById(`${color}-size`).textContent = sizeDesc;
+            document.getElementById(`${color}-size`).textContent = isDead ? 'Dead' : sizeDesc;
             
-            // Mood
-            document.getElementById(`${color}-mood`).textContent = 
-                colony.mood.charAt(0).toUpperCase() + colony.mood.slice(1);
+            // Mood with confidence indicator
+            const moodText = isDead ? 'Extinct' : colony.mood.charAt(0).toUpperCase() + colony.mood.slice(1);
+            const confidenceIcon = isDead ? '' : (colony.confidence > 70 ? '↑' : colony.confidence < 30 ? '↓' : '•');
+            document.getElementById(`${color}-mood`).textContent = `${moodText} ${confidenceIcon}`;
         });
         
         // Update environment display

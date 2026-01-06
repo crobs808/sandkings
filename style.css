@@ -115,6 +115,22 @@ h1 {
     padding: 8px;
     background: #1a1a2e;
     border: 2px solid #4a4a6e;
+    position: relative;
+}
+
+.colony-stat.dead {
+    background: #0a0a1a;
+    opacity: 0.6;
+    filter: grayscale(0.8);
+}
+
+.death-icon {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 1rem;
+    opacity: 0.9;
+    color: #888;
 }
 
 .colony-header {
