@@ -67,6 +67,35 @@ header {
     margin-left: 2px;
 }
 
+.story-credit {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 0.45rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.story-credit .credit-label {
+    color: #888;
+    font-size: 0.38rem;
+}
+
+.story-credit a {
+    color: #6bcf7f;
+    text-decoration: none;
+    border-bottom: 1px dotted #6bcf7f;
+    transition: all 0.2s;
+}
+
+.story-credit a:hover {
+    color: #8fff9f;
+    border-bottom-color: #8fff9f;
+    transform: translateY(-1px);
+}
+
 h1 {
     font-size: 1.2rem;
     color: #ff6b6b;
@@ -78,23 +107,6 @@ h1 {
     font-size: 0.45rem;
     color: #aaa;
     margin-top: 3px;
-}
-
-.credit {
-    font-size: 0.4rem;
-    color: #888;
-    margin-top: 5px;
-}
-
-.credit a {
-    color: #6bcf7f;
-    text-decoration: none;
-    border-bottom: 1px dotted #6bcf7f;
-}
-
-.credit a:hover {
-    color: #8fff9f;
-    border-bottom-color: #8fff9f;
 }
 
 .main-content {

@@ -2897,8 +2897,8 @@ class SandkingGame {
                     
                     // Panic movement - faster when closer
                     const panicFactor = 1 + (80 - minThreatDist) / 40;
-                    food.vx += (dx / dist) * 0.8 * panicFactor;
-                    food.vy += (dy / dist) * 0.8 * panicFactor;
+                    food.vx += (dx / dist) * 0.5 * panicFactor;
+                    food.vy += (dy / dist) * 0.5 * panicFactor;
                     
                     // Add erratic movement when panicked
                     food.vx += (Math.random() - 0.5) * 0.5;
@@ -2919,7 +2919,7 @@ class SandkingGame {
                 
                 // Speed limit
                 const speed = Math.sqrt(food.vx * food.vx + food.vy * food.vy);
-                const maxSpeed = 4;
+                const maxSpeed = 2.5;
                 if (speed > maxSpeed) {
                     food.vx = (food.vx / speed) * maxSpeed;
                     food.vy = (food.vy / speed) * maxSpeed;
@@ -2942,7 +2942,7 @@ class SandkingGame {
                 const segments = 6; // Number of segments to draw
                 
                 ctx.strokeStyle = food.color;
-                ctx.lineWidth = 3;
+                ctx.lineWidth = 2;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
@@ -2967,12 +2967,26 @@ class SandkingGame {
                 }
                 ctx.stroke();
                 
+                // Draw shadow for worm
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(food.x + 1, food.y + 2, length * 0.4, length * 0.15, direction, 0, Math.PI * 2);
+                ctx.fill();
+                
                 // Draw head (slightly larger)
                 ctx.fillStyle = food.color;
                 ctx.beginPath();
                 ctx.arc(food.x, food.y, 2, 0, Math.PI * 2);
                 ctx.fill();
             } else {
+                // Draw drop shadow for static food
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.beginPath();
+                ctx.ellipse(food.x + 1, food.y + 2, food.size * 0.5, food.size * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw food
+                ctx.fillStyle = food.color || '#dd9966';
                 ctx.fillRect(food.x - food.size / 2, food.y - food.size / 2, food.size, food.size);
             }
             
@@ -3349,51 +3363,146 @@ class SandkingGame {
             ctx.translate(spider.x, spider.y - heightOffset);
             ctx.rotate(spider.fallRotation);
             
-            // Spider body
-            ctx.fillStyle = '#654321';
-            ctx.fillRect(-spider.size / 2, -spider.size / 2, spider.size, spider.size);
+            // Spider body (oval)
+            const gradient = ctx.createRadialGradient(-2, -2, 2, 0, 0, spider.size / 2);
+            gradient.addColorStop(0, '#7a5c3e');
+            gradient.addColorStop(1, '#4a3821');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, spider.size / 2, spider.size / 2.5, 0, 0, Math.PI * 2);
+            ctx.fill();
             
-            // Spider legs (8 legs) - simpler during fall
-            ctx.strokeStyle = '#543210';
+            // Spider legs (8 legs) - articulated even during fall
+            ctx.strokeStyle = '#3d2b1a';
             ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
             for (let i = 0; i < 8; i++) {
-                const angle = (Math.PI * 2 * i / 8);
-                const legLength = spider.size + 8;
-                const startX = Math.cos(angle) * spider.size / 2;
-                const startY = Math.sin(angle) * spider.size / 2;
-                const endX = Math.cos(angle) * legLength;
-                const endY = Math.sin(angle) * legLength;
+                const baseAngle = (Math.PI * 2 * i / 8);
+                const angle1 = baseAngle - 0.3;
+                const angle2 = baseAngle - 0.6;
+                
+                const segment1Length = spider.size * 0.5;
+                const segment2Length = spider.size * 0.4;
+                
+                const startX = Math.cos(baseAngle) * (spider.size * 0.3);
+                const startY = Math.sin(baseAngle) * (spider.size * 0.25);
+                
+                const joint1X = startX + Math.cos(angle1) * segment1Length;
+                const joint1Y = startY + Math.sin(angle1) * segment1Length;
+                
+                const endX = joint1X + Math.cos(angle2) * segment2Length;
+                const endY = joint1Y + Math.sin(angle2) * segment2Length;
                 
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
+                ctx.lineTo(joint1X, joint1Y);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
             }
+            
+            // Head and eyes
+            ctx.fillStyle = '#2a1f14';
+            ctx.beginPath();
+            ctx.arc(0, -spider.size * 0.15, spider.size * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.8)';
+            ctx.beginPath();
+            ctx.arc(-3, -spider.size * 0.15, 1.5, 0, Math.PI * 2);
+            ctx.arc(3, -spider.size * 0.15, 1.5, 0, Math.PI * 2);
+            ctx.fill();
             
             ctx.restore();
             return;
         }
         
-        // Spider body
-        ctx.fillStyle = '#654321';
-        ctx.fillRect(spider.x - spider.size / 2, spider.y - spider.size / 2, spider.size, spider.size);
+        // Spider shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.ellipse(spider.x + 2, spider.y + 3, spider.size * 0.8, spider.size * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
         
-        // Spider legs (8 legs)
-        ctx.strokeStyle = '#543210';
-        ctx.lineWidth = 3;
+        // Spider body (more oval/organic)
+        const gradient = ctx.createRadialGradient(spider.x - 2, spider.y - 2, 2, spider.x, spider.y, spider.size / 2);
+        gradient.addColorStop(0, '#7a5c3e');
+        gradient.addColorStop(1, '#4a3821');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(spider.x, spider.y, spider.size / 2, spider.size / 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Spider legs (8 articulated legs with joints)
+        ctx.strokeStyle = '#3d2b1a';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         for (let i = 0; i < 8; i++) {
-            const angle = (Math.PI * 2 * i / 8) + Math.sin(time + i) * 0.2;
-            const legLength = spider.size + 10;
-            const startX = spider.x + Math.cos(angle) * spider.size / 2;
-            const startY = spider.y + Math.sin(angle) * spider.size / 2;
-            const endX = spider.x + Math.cos(angle) * legLength;
-            const endY = spider.y + Math.sin(angle) * legLength;
+            const baseAngle = (Math.PI * 2 * i / 8);
+            const legWave = Math.sin(time + i * 0.8) * 0.15;
+            const angle1 = baseAngle + legWave;
+            const angle2 = baseAngle + legWave * 1.5 - 0.4;
+            const angle3 = baseAngle + legWave * 2 - 0.7;
             
+            const segment1Length = spider.size * 0.6;
+            const segment2Length = spider.size * 0.5;
+            const segment3Length = spider.size * 0.4;
+            
+            // Start point on body
+            const startX = spider.x + Math.cos(baseAngle) * (spider.size * 0.3);
+            const startY = spider.y + Math.sin(baseAngle) * (spider.size * 0.25);
+            
+            // First segment (femur)
+            const joint1X = startX + Math.cos(angle1) * segment1Length;
+            const joint1Y = startY + Math.sin(angle1) * segment1Length;
+            
+            // Second segment (tibia)
+            const joint2X = joint1X + Math.cos(angle2) * segment2Length;
+            const joint2Y = joint1Y + Math.sin(angle2) * segment2Length;
+            
+            // Third segment (tarsus)
+            const endX = joint2X + Math.cos(angle3) * segment3Length;
+            const endY = joint2Y + Math.sin(angle3) * segment3Length;
+            
+            // Draw leg segments with varying thickness
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(startX, startY);
+            ctx.lineTo(joint1X, joint1Y);
+            ctx.stroke();
+            
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(joint1X, joint1Y);
+            ctx.lineTo(joint2X, joint2Y);
+            ctx.stroke();
+            
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(joint2X, joint2Y);
             ctx.lineTo(endX, endY);
             ctx.stroke();
+            
+            // Draw joints as small circles
+            ctx.fillStyle = '#2a1f14';
+            ctx.beginPath();
+            ctx.arc(joint1X, joint1Y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(joint2X, joint2Y, 1.2, 0, Math.PI * 2);
+            ctx.fill();
         }
+        
+        // Spider head marking
+        ctx.fillStyle = '#2a1f14';
+        ctx.beginPath();
+        ctx.arc(spider.x, spider.y - spider.size * 0.15, spider.size * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Spider eyes (creepy red glow)
+        const eyeGlow = Math.sin(time * 2) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(255, 50, 50, ${eyeGlow})`;
+        ctx.beginPath();
+        ctx.arc(spider.x - 3, spider.y - spider.size * 0.15, 1.5, 0, Math.PI * 2);
+        ctx.arc(spider.x + 3, spider.y - spider.size * 0.15, 1.5, 0, Math.PI * 2);
+        ctx.fill();
         
         // Danger aura
         const auraPulse = Math.sin(time) * 0.3 + 0.7;
