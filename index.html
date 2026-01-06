@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandkings - Survival Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>SANDKINGS</h1>
+            <p class="subtitle">Keep them fed. Keep them contained. Survive.</p>
+            <p class="credit">Inspired by <a href="https://en.wikipedia.org/wiki/Sandkings_(novelette)" target="_blank" rel="noopener noreferrer">Sandkings</a> by George R.R. Martin</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Game Stats Panel -->
+            <aside class="stats-panel">
+                <div class="stat-section">
+                    <h2>STATUS</h2>
+                    <div class="stat-item">
+                        <span class="label">Day:</span>
+                        <span class="value" id="day-counter">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Food Supply:</span>
+                        <span class="value" id="food-supply">100</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Your Safety:</span>
+                        <span class="value danger" id="safety-level">SAFE</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Current Tool:</span>
+                        <span class="value" id="current-tool">Hand</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Temperature:</span>
+                        <span class="value" id="temp-display">Warm</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="label">Humidity:</span>
+                        <span class="value" id="humidity-display">Dry</span>
+                    </div>
+                </div>
+
+                <div class="stat-section">
+                    <h2>COLONIES</h2>
+                    <div class="colony-stat" data-color="red">
+                        <div class="colony-header">
+                            <span class="colony-dot red"></span>
+                            <span>RED</span>
+                        </div>
+                        <div class="colony-info">
+                            <div>Pop: <span id="red-population">15</span></div>
+                            <div>Size: <span id="red-size">Tiny</span></div>
+                            <div>Mood: <span id="red-mood">Neutral</span></div>
+                        </div>
+                    </div>
+                    <div class="colony-stat" data-color="white">
+                        <div class="colony-header">
+                            <span class="colony-dot white"></span>
+                            <span>WHITE</span>
+                        </div>
+                        <div class="colony-info">
+                            <div>Pop: <span id="white-population">15</span></div>
+                            <div>Size: <span id="white-size">Tiny</span></div>
+                            <div>Mood: <span id="white-mood">Neutral</span></div>
+                        </div>
+                    </div>
+                    <div class="colony-stat" data-color="black">
+                        <div class="colony-header">
+                            <span class="colony-dot black"></span>
+                            <span>BLACK</span>
+                        </div>
+                        <div class="colony-info">
+                            <div>Pop: <span id="black-population">15</span></div>
+                            <div>Size: <span id="black-size">Tiny</span></div>
+                            <div>Mood: <span id="black-mood">Neutral</span></div>
+                        </div>
+                    </div>
+                    <div class="colony-stat" data-color="orange">
+                        <div class="colony-header">
+                            <span class="colony-dot orange"></span>
+                            <span>ORANGE</span>
+                        </div>
+                        <div class="colony-info">
+                            <div>Pop: <span id="orange-population">15</span></div>
+                            <div>Size: <span id="orange-size">Tiny</span></div>
+                            <div>Mood: <span id="orange-mood">Neutral</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-section event-log-section">
+                    <h2>EVENT LOG</h2>
+                    <div id="event-log" class="event-log"></div>
+                </div>
+            </aside>
+
+            <!-- Tank Display -->
+            <div class="tank-container">
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <div class="tool-group">
+                        <button class="tool-btn active" data-tool="hand" title="Hand - Poke and interact">
+                            <span class="tool-icon">✋</span>
+                            <span class="tool-label">Hand</span>
+                        </button>
+                        <button class="tool-btn" data-tool="grab" title="Grab - Pick up and move sandkings">
+                            <span class="tool-icon">👊</span>
+                            <span class="tool-label">Grab</span>
+                        </button>
+                        <button class="tool-btn" data-tool="feed" title="Feed - Drag food into tank">
+                            <span class="tool-icon">🍖</span>
+                            <span class="tool-label">Scraps</span>
+                        </button>
+                        <button class="tool-btn" data-tool="meat" title="Fresh Meat - More nutritious">
+                            <span class="tool-icon">🥩</span>
+                            <span class="tool-label">Meat</span>
+                        </button>
+                        <button class="tool-btn" data-tool="live-food" title="Live Food - They love hunting!">
+                            <span class="tool-icon">🦎</span>
+                            <span class="tool-label">Live</span>
+                        </button>
+                        <button class="tool-btn" data-tool="treat" title="Treat - Give special food to specific colony">
+                            <span class="tool-icon">🥓</span>
+                            <span class="tool-label">Treat</span>
+                        </button>
+                    </div>
+                    <div class="tool-group tool-divider">
+                        <button class="tool-btn" data-tool="spider" title="Spider - Deadly alien predator (Drag to place)">
+                            <span class="tool-icon">🕷️</span>
+                            <span class="tool-label">Spider</span>
+                        </button>
+                        <button class="tool-btn" data-tool="spray" title="Spray - Annoy sandkings (increases hostility)">
+                            <span class="tool-icon">💨</span>
+                            <span class="tool-label">Spray</span>
+                        </button>
+                        <button class="tool-btn" data-tool="observe" title="Observe - Get detailed information">
+                            <span class="tool-icon">👁️</span>
+                            <span class="tool-label">Observe</span>
+                        </button>
+                    </div>
+                    <div class="tool-group tool-divider">
+                        <label class="env-control">
+                            <span class="env-label">Heat</span>
+                            <input type="range" id="heat-slider" min="0" max="100" value="50" class="env-slider">
+                        </label>
+                        <label class="env-control">
+                            <span class="env-label">Humid</span>
+                            <input type="range" id="humidity-slider" min="0" max="100" value="30" class="env-slider">
+                        </label>
+                    </div>
+                    <div class="tool-group">
+                        <button id="auto-feed-btn" class="tool-btn" title="Toggle auto-feeding">
+                            <span class="tool-icon">⚙️</span>
+                            <span class="tool-label">Auto Feed: OFF</span>
+                        </button>
+                        <button id="mute-btn" class="tool-btn" title="Toggle sound">
+                            <span class="tool-icon" id="mute-icon">🔊</span>
+                            <span class="tool-label">Sound</span>
+                        </button>
+                    </div>
+                    <div class="toolbar-info">
+                        <span id="tool-description">Click and drag to poke sandkings</span>
+                    </div>
+                </div>
+                <div class="tank-frame">
+                    <canvas id="tank-canvas" width="800" height="600"></canvas>
+                    <div id="game-over-overlay" class="game-over-overlay hidden">
+                        <div class="game-over-content">
+                            <h2 id="game-over-title">GAME OVER</h2>
+                            <p id="game-over-message"></p>
+                            <button id="restart-btn" class="action-btn">Start New Game</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tank-controls">
+                    <p class="help-text">
+                        Use tools to interact with the sandkings. Drag food to feed specific colonies. 
+                        Poking or spraying them increases hostility. Watch their faces change based on treatment.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
