@@ -1169,7 +1169,7 @@ class SandkingGame {
             </div>
             <div class="observe-stat">
                 <span class="observe-stat-label">Avg Size:</span>
-                <span class="observe-stat-value">${avgSize.toFixed(1)}px</span>
+                <span class="observe-stat-value">${avgSize.toFixed(1)}mm</span>
             </div>
             <div class="observe-stat">
                 <span class="observe-stat-label">Hunger:</span>
@@ -2617,13 +2617,31 @@ class SandkingGame {
             mobile.vy = (mobile.vy / speed) * maxSpeed;
         }
         
-        // Apply velocity with agitation-based speed boost
-        const speedMultiplier = mobile.agitated ? (1.5 + this.agitationLevel / 100) : 1.0;
+        // Check if mobile is in wet spot (acts like mud)
+        let inWetSpot = false;
+        if (this.wetSpots) {
+            for (const spot of this.wetSpots) {
+                const dx = mobile.x - spot.x;
+                const dy = mobile.y - spot.y;
+                const distToSpot = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distToSpot < spot.radius) {
+                    inWetSpot = true;
+                    break;
+                }
+            }
+        }
+        
+        // Apply velocity with agitation-based speed boost and wet spot penalty
+        let speedMultiplier = mobile.agitated ? (1.5 + this.agitationLevel / 100) : 1.0;
+        if (inWetSpot) {
+            speedMultiplier *= 0.5; // 50% speed reduction in wet spots (mud effect)
+        }
         mobile.x += mobile.vx * deltaTime * 60 * speedMultiplier;
         mobile.y += mobile.vy * deltaTime * 60 * speedMultiplier;
         
-        // Apply friction (stronger when agitated to simulate panic exhaustion)
-        const dragFactor = mobile.agitated ? 0.92 : 0.95;
+        // Apply friction (stronger when agitated to simulate panic exhaustion, even stronger in wet spots)
+        const dragFactor = inWetSpot ? 0.85 : (mobile.agitated ? 0.92 : 0.95);
         mobile.vx *= dragFactor;
         mobile.vy *= dragFactor;
         
