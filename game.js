@@ -788,9 +788,11 @@ class SandkingGame {
             name: spiderNames[Math.floor(Math.random() * spiderNames.length)],
             falling: true,
             fallProgress: 0,
-            fallHeight: 70 + Math.random() * 20,
+            fallVelocity: 0,
+            bouncing: false,
+            bounceVelocity: 0,
             fallRotation: Math.random() * Math.PI * 2,
-            fallRotationSpeed: (Math.random() - 0.5) * 0.4
+            fallRotationSpeed: (Math.random() - 0.5) * 0.6
         };
         
         // Don't play sound yet - will play when it lands
@@ -887,41 +889,79 @@ class SandkingGame {
     }
     
     updateFallingItems(deltaTime) {
+        const gravity = 500; // Pixels per second squared
+        const bounceReduction = 0.4; // Bounce loses 60% of velocity
+        const startHeight = 80; // Starting height above target
+        
         // Update falling food items
         this.foodPieces.forEach(food => {
             if (food.falling) {
-                food.fallProgress += deltaTime * 0.8; // Fall duration ~1.25 seconds
+                // Apply gravity acceleration
+                food.fallVelocity += gravity * deltaTime;
+                
+                // Calculate current height
+                const distanceFallen = food.fallVelocity * deltaTime;
+                food.fallProgress += distanceFallen / startHeight;
                 
                 if (food.fallProgress >= 1) {
-                    // Landed!
+                    // Landed! Start bounce
                     food.falling = false;
+                    food.bouncing = true;
+                    food.bounceVelocity = -food.fallVelocity * bounceReduction;
                     food.x = food.targetX;
                     food.y = food.targetY;
                     this.playThudSound();
                 } else {
-                    // Animate fall with easing
-                    const eased = 1 - Math.pow(1 - food.fallProgress, 3); // Ease out cubic
-                    food.x = food.x + (food.targetX - food.x) * eased * deltaTime * 5;
-                    food.y = food.y + (food.targetY - food.y) * eased * deltaTime * 5;
-                    food.fallRotation += food.fallRotationSpeed;
+                    // Interpolate position during fall
+                    const t = Math.min(1, food.fallProgress);
+                    food.x = food.x + (food.targetX - food.x) * t * deltaTime * 8;
+                    food.y = food.y + (food.targetY - food.y) * t * deltaTime * 8;
+                    food.fallRotation += food.fallRotationSpeed * (1 + food.fallVelocity / 200);
+                }
+            } else if (food.bouncing) {
+                // Bounce physics
+                food.bounceVelocity += gravity * deltaTime * 0.5; // Gravity during bounce
+                const bounceHeight = food.bounceVelocity * deltaTime;
+                
+                if (bounceHeight >= 0) {
+                    // Stopped bouncing
+                    food.bouncing = false;
+                    food.bounceVelocity = 0;
+                } else {
+                    // Continue bounce with smaller velocity
+                    food.bounceVelocity *= 0.95;
                 }
             }
         });
         
         // Update falling spider
         if (this.spider && this.spider.falling) {
-            this.spider.fallProgress += deltaTime * 0.8;
+            this.spider.fallVelocity += gravity * deltaTime;
+            const distanceFallen = this.spider.fallVelocity * deltaTime;
+            this.spider.fallProgress += distanceFallen / startHeight;
             
             if (this.spider.fallProgress >= 1) {
                 this.spider.falling = false;
+                this.spider.bouncing = true;
+                this.spider.bounceVelocity = -this.spider.fallVelocity * bounceReduction;
                 this.spider.x = this.spider.targetX;
                 this.spider.y = this.spider.targetY;
                 this.playThudSound();
             } else {
-                const eased = 1 - Math.pow(1 - this.spider.fallProgress, 3);
-                this.spider.x = this.spider.x + (this.spider.targetX - this.spider.x) * eased * deltaTime * 5;
-                this.spider.y = this.spider.y + (this.spider.targetY - this.spider.y) * eased * deltaTime * 5;
-                this.spider.fallRotation += this.spider.fallRotationSpeed;
+                const t = Math.min(1, this.spider.fallProgress);
+                this.spider.x = this.spider.x + (this.spider.targetX - this.spider.x) * t * deltaTime * 8;
+                this.spider.y = this.spider.y + (this.spider.targetY - this.spider.y) * t * deltaTime * 8;
+                this.spider.fallRotation += this.spider.fallRotationSpeed * (1 + this.spider.fallVelocity / 200);
+            }
+        } else if (this.spider && this.spider.bouncing) {
+            this.spider.bounceVelocity += gravity * deltaTime * 0.5;
+            const bounceHeight = this.spider.bounceVelocity * deltaTime;
+            
+            if (bounceHeight >= 0) {
+                this.spider.bouncing = false;
+                this.spider.bounceVelocity = 0;
+            } else {
+                this.spider.bounceVelocity *= 0.95;
             }
         }
     }
@@ -1030,13 +1070,13 @@ class SandkingGame {
         });
         
         if (foundColony) {
-            this.showObservePanel(foundColony);
+            this.showObservePanel(foundColony, x, y);
         } else {
             this.addEvent('Click near a colony castle to observe it.', 'info');
         }
     }
     
-    showObservePanel(colony) {
+    showObservePanel(colony, clickX, clickY) {
         const overlay = document.getElementById('observe-overlay');
         const name = document.getElementById('observe-colony-name');
         const content = document.getElementById('observe-content');
@@ -1060,6 +1100,8 @@ class SandkingGame {
         
         // Calculate relationships with other colonies
         const relationships = {};
+        const allies = [];
+        const enemies = [];
         Object.entries(this.colonies).forEach(([color, otherColony]) => {
             if (color === colony.color) return;
             
@@ -1103,6 +1145,14 @@ class SandkingGame {
             else relationStatus = 'enemy';
             
             relationships[color] = { percent: relationPercent, status: relationStatus };
+            
+            // Add to allies or enemies lists
+            const colorName = color.charAt(0).toUpperCase() + color.slice(1);
+            if (relationStatus === 'ally' || relationStatus === 'friendly') {
+                allies.push(colorName);
+            } else if (relationStatus === 'enemy' || relationStatus === 'hostile') {
+                enemies.push(colorName);
+            }
         });
         
         // Build stats HTML
@@ -1125,6 +1175,19 @@ class SandkingGame {
                 <span class="observe-stat-label">Hunger:</span>
                 <span class="observe-stat-value ${hungerClass}">${Math.floor(colony.hunger)}%</span>
             </div>`;
+        
+        // Show allies and enemies if sentient enough
+        if (hasAdvancedSentience) {
+            statsHTML += `
+                <div class="observe-stat">
+                    <span class="observe-stat-label">Allies:</span>
+                    <span class="observe-stat-value good">${allies.length > 0 ? allies.join(', ') : 'None'}</span>
+                </div>
+                <div class="observe-stat">
+                    <span class="observe-stat-label">Enemies:</span>
+                    <span class="observe-stat-value danger">${enemies.length > 0 ? enemies.join(', ') : 'None'}</span>
+                </div>`;
+        }
         
         // Sentience-dependent stats
         if (hasBasicSentience) {
@@ -1195,8 +1258,29 @@ class SandkingGame {
         
         content.innerHTML = statsHTML;
         
-        // Show overlay
+        // Position overlay near click location
+        // Convert canvas coordinates to page coordinates
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const pageX = canvasRect.left + clickX;
+        const pageY = canvasRect.top + clickY;
+        
+        // Show overlay first to measure its dimensions
         overlay.classList.remove('hidden');
+        const overlayRect = overlay.getBoundingClientRect();
+        
+        // Calculate position, keeping it within viewport
+        let left = pageX - overlayRect.width / 2;
+        let top = pageY + 20; // Offset below click
+        
+        // Keep within bounds
+        const margin = 20;
+        left = Math.max(margin, Math.min(window.innerWidth - overlayRect.width - margin, left));
+        top = Math.max(margin, Math.min(window.innerHeight - overlayRect.height - margin, top));
+        
+        // Apply positioning
+        overlay.style.left = left + 'px';
+        overlay.style.top = top + 'px';
+        overlay.style.transform = 'none'; // Remove centering transform
         
         // Auto-close after 5 seconds
         if (this.observeTimeout) clearTimeout(this.observeTimeout);
@@ -1213,11 +1297,25 @@ class SandkingGame {
     }
     
     dropFood(x, y, type = 'scraps', targetColony = null, isLive = false) {
+        // Calculate average sandking size across all colonies to scale food appropriately
+        let totalSize = 0;
+        let totalMobiles = 0;
+        Object.values(this.colonies).forEach(colony => {
+            colony.mobiles.forEach(mobile => {
+                totalSize += mobile.size;
+                totalMobiles++;
+            });
+        });
+        const avgMobileSize = totalMobiles > 0 ? totalSize / totalMobiles : 2;
+        
+        // Scale food based on average mobile size (food should be 0.8-1.5x mobile size)
+        const sizeScale = Math.max(0.5, Math.min(2, avgMobileSize / 5));
+        
         const foodTypes = {
-            scraps: { size: 5, amount: 10, color: '#dd9966', nutritionValue: 10 },
-            meat: { size: 8, amount: 20, color: '#dd5555', nutritionValue: 25 },
-            treat: { size: 8, amount: 20, color: '#ffdd66', nutritionValue: 20 },
-            live: { size: 6, amount: 25, color: '#88dd88', nutritionValue: 30 }
+            scraps: { size: 3 * sizeScale, amount: 10, color: '#dd9966', nutritionValue: 10 },
+            meat: { size: 5 * sizeScale, amount: 20, color: '#dd5555', nutritionValue: 25 },
+            treat: { size: 5 * sizeScale, amount: 20, color: '#ffdd66', nutritionValue: 20 },
+            live: { size: 4 * sizeScale, amount: 25, color: '#88dd88', nutritionValue: 30 }
         };
         
         const foodData = foodTypes[type] || foodTypes.scraps;
@@ -1245,9 +1343,11 @@ class SandkingGame {
             alive: isLive,
             falling: true,
             fallProgress: 0,
-            fallHeight: 60 + Math.random() * 20,
+            fallVelocity: 0,
+            bouncing: false,
+            bounceVelocity: 0,
             fallRotation: Math.random() * Math.PI * 2,
-            fallRotationSpeed: (Math.random() - 0.5) * 0.3
+            fallRotationSpeed: (Math.random() - 0.5) * 0.5
         };
         this.foodPieces.push(foodPiece);
     }
@@ -2719,19 +2819,20 @@ class SandkingGame {
             ctx.fillStyle = food.color || '#dd9966';
             
             // Draw falling animation with shadow
-            if (food.falling) {
-                const progress = food.fallProgress;
-                const heightOffset = food.fallHeight * (1 - progress);
+            if (food.falling || food.bouncing) {
+                const heightOffset = food.falling 
+                    ? (1 - food.fallProgress) * 80 
+                    : Math.abs(food.bounceVelocity) * 0.05; // Small bounce offset
                 
                 // Draw shadow (ellipse that grows as item gets closer)
-                const shadowSize = food.size * (1 + progress * 0.5);
-                const shadowOpacity = 0.2 + progress * 0.2;
+                const shadowSize = food.size * (food.falling ? (1 + food.fallProgress * 0.5) : 1.2);
+                const shadowOpacity = food.falling ? (0.2 + food.fallProgress * 0.2) : 0.3;
                 ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
                 ctx.beginPath();
                 ctx.ellipse(food.targetX, food.targetY, shadowSize * 0.8, shadowSize * 0.4, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Draw falling item at offset position
+                // Draw falling/bouncing item at offset position
                 ctx.save();
                 ctx.translate(food.x, food.y - heightOffset);
                 ctx.rotate(food.fallRotation);
@@ -3212,13 +3313,14 @@ class SandkingGame {
         const time = Date.now() / 100;
         
         // Draw falling animation with shadow
-        if (spider.falling) {
-            const progress = spider.fallProgress;
-            const heightOffset = spider.fallHeight * (1 - progress);
+        if (spider.falling || spider.bouncing) {
+            const heightOffset = spider.falling 
+                ? (1 - spider.fallProgress) * 80 
+                : Math.abs(spider.bounceVelocity) * 0.05;
             
             // Draw shadow (ellipse that grows as spider gets closer)
-            const shadowSize = spider.size * (1 + progress * 0.5);
-            const shadowOpacity = 0.3 + progress * 0.3;
+            const shadowSize = spider.size * (spider.falling ? (1 + spider.fallProgress * 0.5) : 1.2);
+            const shadowOpacity = spider.falling ? (0.3 + spider.fallProgress * 0.3) : 0.4;
             ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
             ctx.beginPath();
             ctx.ellipse(spider.targetX, spider.targetY, shadowSize * 0.9, shadowSize * 0.5, 0, 0, Math.PI * 2);
@@ -3330,7 +3432,7 @@ class SandkingGame {
         const colorMap = {
             red: '#ff4444',
             white: '#eeeeee',
-            black: '#000000',
+            black: '#2a2a2a',  // Dark gray instead of pure black to reduce harsh contrast
             orange: '#ff9944'
         };
         const baseColor = colorMap[colony.color];
