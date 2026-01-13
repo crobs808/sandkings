@@ -23,7 +23,7 @@ class SandkingGame {
         this.isWithholdingFood = false;
         this.daysWithoutFeeding = 0;
         this.consecutiveDaysFed = 0;
-        this.autoFeed = false;
+        this.autoFeed = true;
         
         // Player safety level (0-100, lower is more dangerous)
         this.safetyLevel = 100;
@@ -451,10 +451,51 @@ class SandkingGame {
     }
     
     setupCanvasInteraction() {
+        // Mouse events
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+        
+        // Touch events for mobile support
+        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
+        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), false);
+        this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), false);
+        this.canvas.addEventListener('touchcancel', (e) => this.handleTouchEnd(e), false);
+    }
+    
+    getTouchPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const touch = e.touches[0] || e.changedTouches[0];
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        return {
+            x: (touch.clientX - rect.left) * scaleX,
+            y: (touch.clientY - rect.top) * scaleY
+        };
+    }
+    
+    handleTouchStart(e) {
+        e.preventDefault();
+        const pos = this.getTouchPos(e);
+        const mouseEvent = new MouseEvent('mousedown', {
+            clientX: pos.x,
+            clientY: pos.y,
+            bubbles: true,
+            cancelable: true
+        });
+        this.handleMouseDown({ clientX: pos.x, clientY: pos.y, preventDefault: () => {} });
+    }
+    
+    handleTouchMove(e) {
+        e.preventDefault();
+        const pos = this.getTouchPos(e);
+        this.handleMouseMove({ clientX: pos.x, clientY: pos.y, preventDefault: () => {} });
+    }
+    
+    handleTouchEnd(e) {
+        e.preventDefault();
+        this.handleMouseUp({ preventDefault: () => {} });
     }
     
     selectTool(tool) {
@@ -1644,9 +1685,16 @@ class SandkingGame {
             this.foodSupply -= 10;
         }
         
-        // Auto-drain food supply slowly
-        this.foodSupply -= deltaTime * 0.05;
+        // Auto-drain food supply slowly (reduced rate)
+        this.foodSupply -= deltaTime * 0.02;
+        
+        // Replenish food supply slowly (natural generation)
+        if (this.foodSupply < 120) {
+            this.foodSupply += deltaTime * 0.04;
+        }
+        
         if (this.foodSupply < 0) this.foodSupply = 0;
+        if (this.foodSupply > 150) this.foodSupply = 150; // Cap at 150
         
         // Track feeding consistency
         if (this.foodPieces.length === 0 && !this.autoFeed) {
