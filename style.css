@@ -486,16 +486,19 @@ h1 {
         inset 0 0 50px rgba(0,0,0,0.8),
         0 8px 0 #0a0a1e;
     padding: 5px;
+    aspect-ratio: 4 / 3;
+    max-width: 100%;
 }
 
 #tank-canvas {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     background: linear-gradient(180deg, #1a0f0f 0%, #0f0505 100%);
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     cursor: crosshair;
+    touch-action: none;
 }
 
 #tank-canvas.cursor-hand {
@@ -729,19 +732,23 @@ h1 {
     padding: 15px 30px;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
+/* Responsive Design - Mobile First */
+@media (max-width: 1024px) {
     .main-content {
         flex-direction: column;
     }
     
     .stats-panel {
         flex: 1;
+        width: 100%;
     }
     
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
+    .tool-group.tool-divider {
+        border-left: none;
+        border-top: 2px solid #4a4a6e;
+        padding-left: 0;
+        padding-top: 6px;
+        margin-top: 6px;
     }
     
     .toolbar-info {
@@ -750,28 +757,319 @@ h1 {
         padding-left: 0;
         padding-top: 10px;
         text-align: center;
-    }
-    
-    h1 {
-        font-size: 1.8rem;
+        width: 100%;
     }
 }
 
 @media (max-width: 768px) {
+    .game-container {
+        padding: 5px;
+    }
+    
+    header {
+        margin-bottom: 5px;
+        padding: 3px 8px;
+    }
+    
+    .github-link, .story-credit {
+        position: static;
+        font-size: 0.35rem;
+        justify-content: center;
+        margin: 3px 0;
+    }
+    
+    .github-link {
+        align-items: center;
+    }
+    
+    .story-credit {
+        align-items: center;
+    }
+    
+    .github-link a, .story-credit a {
+        gap: 2px;
+    }
+    
     h1 {
-        font-size: 1.2rem;
+        font-size: 0.9rem;
     }
     
     .subtitle {
-        font-size: 0.5rem;
+        font-size: 0.35rem;
+    }
+    
+    .toolbar {
+        padding: 6px;
+        gap: 8px;
+        border: 3px solid #4a4a6e;
+    }
+    
+    .tool-group {
+        gap: 4px;
+    }
+    
+    .tool-group.tool-divider {
+        width: 100%;
+        border: none;
+        border-top: 2px solid #4a4a6e;
+        padding: 6px 0 0 0;
+        margin-top: 3px;
+        justify-content: center;
+    }
+    
+    .tool-btn {
+        font-size: 0.4rem;
+        padding: 6px 8px;
+        min-width: 50px;
+        gap: 3px;
+        box-shadow: 0 2px 0 #1a1a3e;
+    }
+    
+    .tool-btn:active {
+        box-shadow: 0 1px 0 #1a1a3e;
+    }
+    
+    .tool-icon {
+        font-size: 0.8rem;
+    }
+    
+    .tool-label {
+        font-size: 0.35rem;
+    }
+    
+    .env-control {
+        gap: 2px;
+    }
+    
+    .env-label {
+        font-size: 0.35rem;
+    }
+    
+    .env-value {
+        font-size: 0.32rem;
+        margin-top: 1px;
+    }
+    
+    .env-slider {
+        width: 50px;
+        height: 6px;
+    }
+    
+    .env-slider::-webkit-slider-thumb {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .env-slider::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .weather-preset-btn {
+        font-size: 0.4rem;
+        padding: 6px 8px;
+        min-width: 50px;
+        gap: 3px;
+    }
+    
+    .toolbar-info {
+        font-size: 0.4rem;
+        width: 100%;
+    }
+    
+    .stats-panel {
+        flex: none;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    .stat-section {
+        padding: 6px;
     }
     
     .stat-section h2 {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
+        margin-bottom: 6px;
+        padding-bottom: 3px;
+    }
+    
+    .stat-item {
+        margin-bottom: 4px;
+        font-size: 0.48rem;
+    }
+    
+    .colony-stat {
+        padding: 5px;
+    }
+    
+    .colony-header {
+        font-size: 0.5rem;
+        margin-bottom: 4px;
+    }
+    
+    .colony-info {
+        font-size: 0.45rem;
+    }
+    
+    .tank-frame {
+        border: 4px solid #4a4a6e;
+        box-shadow: 
+            0 0 0 1px #2a2a4e,
+            inset 0 0 50px rgba(0,0,0,0.8),
+            0 4px 0 #0a0a1e;
+        padding: 3px;
+    }
+    
+    .tank-controls {
+        margin-top: 5px;
+        padding: 8px;
+        border: 3px solid #4a4a6e;
+    }
+    
+    .help-text {
+        font-size: 0.4rem;
     }
     
     .action-btn {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    
+    .event-log {
+        max-height: 120px;
+        font-size: 0.42rem;
+    }
+    
+    .event-entry {
+        margin-bottom: 5px;
+        padding: 3px;
+        border-left: 2px solid #4a4a6e;
+        padding-left: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-container {
+        padding: 3px;
+    }
+    
+    header {
+        margin-bottom: 3px;
+        padding: 2px 5px;
+    }
+    
+    .github-link, .story-credit {
+        font-size: 0.3rem;
+        margin: 2px 0;
+    }
+    
+    .author-credit {
+        font-size: 0.28rem;
+    }
+    
+    h1 {
+        font-size: 0.75rem;
+    }
+    
+    .subtitle {
+        font-size: 0.3rem;
+    }
+    
+    .toolbar {
+        padding: 4px;
+        gap: 4px;
+    }
+    
+    .tool-group {
+        gap: 3px;
+    }
+    
+    .tool-btn, .weather-preset-btn {
+        font-size: 0.35rem;
+        padding: 5px 6px;
+        min-width: 45px;
+        gap: 2px;
+        box-shadow: 0 1px 0 #1a1a3e;
+    }
+    
+    .tool-btn:active, .weather-preset-btn:active {
+        box-shadow: 0 0px 0 #1a1a3e;
+    }
+    
+    .tool-icon {
+        font-size: 0.7rem;
+    }
+    
+    .tool-label {
+        font-size: 0.3rem;
+    }
+    
+    .env-slider {
+        width: 40px;
+        height: 5px;
+    }
+    
+    .env-slider::-webkit-slider-thumb {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .env-slider::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .stat-section h2 {
+        font-size: 0.5rem;
+        margin-bottom: 4px;
+    }
+    
+    .stat-item {
+        margin-bottom: 3px;
+        font-size: 0.42rem;
+    }
+    
+    .colony-header {
+        font-size: 0.42rem;
+    }
+    
+    .colony-info {
+        font-size: 0.4rem;
+    }
+    
+    .tank-frame {
+        border: 3px solid #4a4a6e;
+        box-shadow: 
+            inset 0 0 30px rgba(0,0,0,0.8),
+            0 2px 0 #0a0a1e;
+        padding: 2px;
+    }
+    
+    #tank-canvas.cursor-hand {
+        cursor: grab;
+    }
+    
+    .tank-controls {
+        margin-top: 3px;
+        padding: 5px;
+        border: 2px solid #4a4a6e;
+    }
+    
+    .help-text {
+        font-size: 0.35rem;
+        line-height: 1.4;
+    }
+    
+    .action-btn {
+        font-size: 0.45rem;
+        padding: 8px;
+        margin-bottom: 6px;
+    }
+    
+    .event-log {
+        max-height: 100px;
+        font-size: 0.38rem;
     }
 }
 
