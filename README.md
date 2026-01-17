@@ -1,6 +1,8 @@
 # Sandkings
 
-A web-based survival game inspired by George R.R. Martin's "Sandkings" short story. Watch four insectoid colonies grow, compete for resources, and battle each other in a sealed tank environment.
+A web-based survival game inspired by George R.R. Martin's "Sandkings" short story. Watch four insectoid colonies grow, compete for resources, and battle each other in a sealed tank environment. 
+
+(Playable demo: https://corusa.com/public/sandkings)
 
 ## Features
 
